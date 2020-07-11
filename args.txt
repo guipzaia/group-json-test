@@ -1,0 +1,8 @@
+./
+(teste)(.*)(.json)
+saida_cpp.json
+14
+32
+-2
+"cnpjEmissor":
+"agencia":

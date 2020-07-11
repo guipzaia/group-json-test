@@ -5,7 +5,7 @@ import glob
 #############################################
 
 # Diretorio dos arquivos
-path = '/path/from/file/'
+path = './'
 
 # Prefixo dos arquivos de entrada
 pattern = '{}teste*.json'.format(path)
@@ -14,9 +14,17 @@ pattern = '{}teste*.json'.format(path)
 writername = '{}saida.json'.format(path)
 
 # Offsets
+
 # Definem quantos bytes serao apagados do arquivo de saida para agrupamento
 offsetCnpjEmissor = 18
 offsetAgencia = 38
+
+# Quebra de linha
+offsetBreakline = -3
+
+# Strings
+strCnpjEmissor = '\"cnpjEmissor\":'
+strAgencia = '\"agencia\":'
 
 #############################################
 #############################################
@@ -29,13 +37,6 @@ cnpjEmissorAtual = None
 # Contadores
 countLines = 0
 countFiles = 0
-
-# Flag para pular o cabecalho
-jumpHeader = False
-
-# Strings
-strCnpjEmissor = '\"cnpjEmissor\":'
-strAgencia = '\"agencia\":'
 
 # Abre arquivo de saida para escrita
 writer = open(writername, 'w+')
@@ -57,8 +58,15 @@ def groupFiles(offset):
     # Grava nova tag
     writeFile('},{\n')
 
+print('Inicio do processamento\n')
+
+# Seleciona arquivos para processamento
+files = glob.glob(pattern)
+
+print('Selecionados {} arquivos para processamento'.format(len(files)))
+
 # Looping dos arquivos
-for filename in glob.glob(pattern):
+for filename in files:
 
     # Contador de arquivos
     countFiles += 1
@@ -66,7 +74,7 @@ for filename in glob.glob(pattern):
     # Pula o cabecalho a partir do 2o arquivo
     jumpHeader = True if countFiles > 1 else False
 
-    print('Processando arquivo {}'.format(filename))
+    print('\nProcessando arquivo {} de {} ({})'.format(countFiles, len(files), filename))
 
     # Abre arquivo para leitura
     file = open(filename, 'r')
@@ -83,14 +91,13 @@ for filename in glob.glob(pattern):
         # String "cnpjEmissor" encontrada
         if pos > -1:
 
-            # Obtem chave: numero do "cnpjEmissor"
-            pos += len(strCnpjEmissor)
-            cnpjEmissorAtual = str(line)[pos:-3].strip()
+            # Obtem chave: numero do "cnpjEmissor"            
+            cnpjEmissorAtual = str(line)[pos + len(strCnpjEmissor):offsetBreakline].strip()
 
             # Chave atual == chave anterior
             if cnpjEmissorAtual == cnpjEmissorAnterior:
 
-                print('Agrupando contas para o CNPJ: {}'.format(cnpjEmissorAtual))
+                print('Agrupando contas para o emissor: {}'.format(cnpjEmissorAtual))
 
                 # Pula cabecalho da empresa emissora
                 while line.find(strAgencia) < 0:
@@ -101,6 +108,8 @@ for filename in glob.glob(pattern):
 
             # Chaves diferentes
             else:
+
+                print('Incluindo novo emissor: {}'.format(cnpjEmissorAtual))
 
                 # Atualiza chave
                 cnpjEmissorAnterior = cnpjEmissorAtual
@@ -133,3 +142,5 @@ for filename in glob.glob(pattern):
 
 # Fecha arquivo de saida
 writer.close()
+
+print('\nFim do processamento')
