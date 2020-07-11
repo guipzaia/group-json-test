@@ -78,8 +78,18 @@ void writeFile(string line, ofstream *writer, unsigned long long *countLines) {
 // Agrupa conteudo dos arquivos
 void groupFiles(short offset, ofstream *writer, unsigned long long *countLines) {
 
+    // Casting para Linux
+    #ifdef linux
+        long castedOffset = (long) offset;
+    #endif
+
+    // Casting para Windows
+    #ifdef _WIN32
+        long long castedOffset = (long long) offset;
+    #endif
+
     // Deleta tags de fechamento do JSON
-    writer->seekp(writer->tellp() - long (offset), ios::beg);
+    writer->seekp(writer->tellp() - castedOffset, ios::beg);
 
     // Grava nova tag
     writeFile("},{\n", writer, countLines);
