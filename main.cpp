@@ -137,6 +137,11 @@ string trim(const string& str) {
 // Funcao "main"
 int main(int argc, const char *argv[]) {
 
+    // Obter arquivo de configuracao automaticamente caso nao tenha argumentos
+    if (argc == 1) {
+        argv[1] = "./args.txt";
+    }
+
     // Carrega as constantes do programa
     config c = loadConstants(argv[1]);
 
