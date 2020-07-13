@@ -1,8 +1,7 @@
 ./
-(teste)(.*)(.json)
+(withoutformat)(.*)(.json)
 saida_cpp.json
-14
-32
--2
+4
+6
 "cnpjEmissor":
 "agencia":

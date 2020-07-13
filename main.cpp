@@ -24,9 +24,6 @@ struct config {
     unsigned short OFFSET_CNPJ_EMISSOR;
     unsigned short OFFSET_AGENCIA;
 
-    //# Quebra de linha
-    signed short OFFSET_BREAKLINE;
-
     // Strings
     string STR_CNPJ_EMISSOR;
     string STR_AGENCIA;
@@ -56,9 +53,6 @@ config loadConstants(string filepath) {
     file >> c.OFFSET_CNPJ_EMISSOR;
     file >> c.OFFSET_AGENCIA;
 
-    //# Quebra de linha
-    file >> c.OFFSET_BREAKLINE;
-
     // Strings
     file >> c.STR_CNPJ_EMISSOR;
     file >> c.STR_AGENCIA;
@@ -69,14 +63,13 @@ config loadConstants(string filepath) {
 }
 
 // Grava linha no arquivo de saida
-void writeFile(string line, ofstream *writer, unsigned long long *countLines) {
+void writeFile(string line, ofstream *writer) {
 
     *writer << line;
-    *countLines++;
 }
 
 // Agrupa conteudo dos arquivos
-void groupFiles(short offset, ofstream *writer, unsigned long long *countLines) {
+void groupFiles(short offset, ofstream *writer) {
 
     // Casting para Linux
     #ifdef linux
@@ -92,7 +85,7 @@ void groupFiles(short offset, ofstream *writer, unsigned long long *countLines) 
     writer->seekp(writer->tellp() - castedOffset, ios::beg);
 
     // Grava nova tag
-    writeFile("},{\n", writer, countLines);
+    writeFile("},{", writer);
 }
 
 // Seleciona arquivos para processamento
@@ -123,6 +116,35 @@ vector<string> glob(string path, string pattern) {
     }
 
     return files;
+}
+
+// Separa uma string de acordo com os limitadores
+vector<string> split(string str, string delim) {
+
+    string::size_type pos;
+
+    vector<string> tokens;
+
+    // Retorna a posicao do caracter delimitador
+    while ((pos = str.find_first_of(delim)) != std::string::npos) {
+
+        // Adiciona string (linha) do vetor
+        tokens.push_back(str.substr(0, pos ? pos : 1));
+
+        // Apaga string (linha) gravada
+        str.erase(0, pos ? pos : 1);
+    }
+
+    return tokens;
+}
+
+// Le uma linha do arquivo (vetor)
+string readLine(vector<string> lines, unsigned long long& countLines) {
+
+    countLines++;
+
+    // Retorna proxima linha ou "" (EOF)
+    return countLines < lines.size() ? lines[countLines] : "";
 }
 
 // Retira espacos em branco de uma string
@@ -168,6 +190,9 @@ int main(int argc, const char *argv[]) {
 
     // Looping dos arquivos
     for (int i = 0; i < files.size(); i++) {
+        
+        // Contador de linhas
+        countLines = 0;
 
         // Contador de arquivos
         countFiles++;
@@ -178,16 +203,25 @@ int main(int argc, const char *argv[]) {
         cout << "\nProcessando arquivo " << countFiles << " de " << files.size() << " (" << c.PATH << files[i] << ")\n";
 
         // Variavel para leitura de uma linha do arquivo
-        string line;
+        string json;
 
         // Abre arquivo para leitura
         ifstream file(c.PATH + files[i]);
 
         // Le uma linha do arquivo
-        getline(file, line);
+        getline(file, json);
+
+        // Fecha arquivo de entrada
+        file.close();
+
+        // Separa conteudo do arquivo em linhas
+        vector<string> lines = split(json, "{[]},");
+
+        // Le uma linha
+        string line = lines[countLines];
 
         // Looping de processamento do arquivo
-        while (! file.eof()) {
+        while (line != "") {
 
             // Verifica se linha possui a string informada
             size_t pos = line.find(c.STR_CNPJ_EMISSOR);
@@ -196,9 +230,7 @@ int main(int argc, const char *argv[]) {
             if (pos != std::string::npos) {
 
                 // Obtem chave: numero do "cnpjEmissor"            
-                cnpjEmissorAtual = trim(line.substr(
-                    pos + c.STR_CNPJ_EMISSOR.size(),
-                    line.size() - (pos + c.STR_CNPJ_EMISSOR.size()) + c.OFFSET_BREAKLINE));
+                cnpjEmissorAtual = trim(line.substr(pos + c.STR_CNPJ_EMISSOR.size(), line.size()));
 
                 // Chave atual == chave anterior
                 if (cnpjEmissorAtual == cnpjEmissorAnterior) {
@@ -209,11 +241,11 @@ int main(int argc, const char *argv[]) {
                     while (line.find(c.STR_AGENCIA) == std::string::npos) {
 
                         // Le uma linha do arquivo
-                        getline(file, line);
+                        line = readLine(lines, countLines);
                     }
 
                     // Agrupa arquivos JSON
-                    groupFiles(c.OFFSET_AGENCIA, &writer, &countLines);
+                    groupFiles(c.OFFSET_AGENCIA, &writer);
 
                 // Chaves diferentes
                 } else {
@@ -227,12 +259,12 @@ int main(int argc, const char *argv[]) {
                     if (countFiles > 1) {
 
                         // Agrupa arquivos JSON
-                        groupFiles(c.OFFSET_CNPJ_EMISSOR, &writer, &countLines);
+                        groupFiles(c.OFFSET_CNPJ_EMISSOR, &writer);
                     }
                 }
 
                 // Grava linha do arquivo de entrada para arquivo de saida
-                writeFile(line, &writer, &countLines);
+                writeFile(line, &writer);
 
                 // Atualiza flag para pular o cabecalho
                 jumpHeader = false;
@@ -244,16 +276,13 @@ int main(int argc, const char *argv[]) {
                 // se flag para pular cabecalho igual a Falso
                 if (! jumpHeader) {
 
-                    writeFile(line, &writer, &countLines);
+                    writeFile(line, &writer);
                 }
             }
 
             // Le uma linha do arquivo
-            getline(file, line);
+            line = readLine(lines, countLines);
         }
-
-        // Fecha arquivo de entrada
-        file.close();
     }
 
     // Fecha arquivo de saida

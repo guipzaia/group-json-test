@@ -51,7 +51,7 @@ def groupFiles(offset):
     writer.seek(writer.tell() - offset, 0)
 
     # Grava nova tag
-    writeFile('},{\n')
+    writeFile('},{')
 
 # Le uma linha do arquivo (vetor)
 def readLine(lines):
