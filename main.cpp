@@ -141,10 +141,8 @@ vector<string> split(string str, string delim) {
 // Le uma linha do arquivo (vetor)
 string readLine(vector<string> lines, unsigned long long& countLines) {
 
-    countLines++;
-
     // Retorna proxima linha ou "" (EOF)
-    return countLines < lines.size() ? lines[countLines] : "";
+    return ++countLines < lines.size() ? lines[countLines] : "";
 }
 
 // Retira espacos em branco de uma string
