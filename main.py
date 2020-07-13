@@ -1,4 +1,5 @@
 import glob
+import re
 
 #############################################
 ##              Configuracao               ##
@@ -8,7 +9,7 @@ import glob
 path = './'
 
 # Prefixo dos arquivos de entrada
-pattern = '{}teste*.json'.format(path)
+pattern = '{}withoutformat*.json'.format(path)
 
 # Nome do arquivo de saida
 writername = '{}saida.json'.format(path)
@@ -16,11 +17,8 @@ writername = '{}saida.json'.format(path)
 # Offsets
 
 # Definem quantos bytes serao apagados do arquivo de saida para agrupamento
-offsetCnpjEmissor = 18
-offsetAgencia = 38
-
-# Quebra de linha
-offsetBreakline = -3
+offsetCnpjEmissor = 4
+offsetAgencia = 6
 
 # Strings
 strCnpjEmissor = '\"cnpjEmissor\":'
@@ -44,10 +42,7 @@ writer = open(writername, 'w+')
 # Grava linha no arquivo de saida
 def writeFile(line):
 
-    global countLines
-
     writer.write(line)
-    countLines += 1
 
 # Agrupa conteudo dos arquivos
 def groupFiles(offset):
@@ -58,6 +53,16 @@ def groupFiles(offset):
     # Grava nova tag
     writeFile('},{\n')
 
+# Le uma linha do arquivo (vetor)
+def readLine(lines):
+
+    global countLines
+
+    countLines += 1
+
+    # Retorna proxima linha ou False (EOF)
+    return lines[countLines] if countLines < len(lines) else False
+
 print('Inicio do processamento\n')
 
 # Seleciona arquivos para processamento
@@ -67,6 +72,9 @@ print('Selecionados {} arquivos para processamento'.format(len(files)))
 
 # Looping dos arquivos
 for filename in files:
+
+    # Contador de linhas
+    countLines = 0
 
     # Contador de arquivos
     countFiles += 1
@@ -80,7 +88,17 @@ for filename in files:
     file = open(filename, 'r')
 
     # Le uma linha do arquivo
-    line = file.readline()
+    json = file.readline()
+
+    # Fecha arquivo de entrada
+    file.close()
+
+    # Separa conteudo do arquivo em linhas
+    lines = re.split('({)|([)|(})|(])|(,)', json)
+    lines = [i for i in lines if i]
+
+    # Le uma linha
+    line = lines[countLines]
 
     # Looping de processamento do arquivo
     while line:
@@ -92,7 +110,7 @@ for filename in files:
         if pos > -1:
 
             # Obtem chave: numero do "cnpjEmissor"            
-            cnpjEmissorAtual = str(line)[pos + len(strCnpjEmissor):offsetBreakline].strip()
+            cnpjEmissorAtual = str(line)[pos + len(strCnpjEmissor):].strip()
 
             # Chave atual == chave anterior
             if cnpjEmissorAtual == cnpjEmissorAnterior:
@@ -101,7 +119,9 @@ for filename in files:
 
                 # Pula cabecalho da empresa emissora
                 while line.find(strAgencia) < 0:
-                    line = file.readline()
+
+                    # Le uma linha do arquivo de entrada
+                    line = readLine(lines)
 
                 # Agrupa arquivos JSON
                 groupFiles(offsetAgencia)
@@ -135,10 +155,7 @@ for filename in files:
                 writeFile(line)
 
         # Le uma linha do arquivo de entrada
-        line = file.readline()
-
-    # Fecha arquivo de entrada
-    file.close()
+        line = readLine(lines)
 
 # Fecha arquivo de saida
 writer.close()
